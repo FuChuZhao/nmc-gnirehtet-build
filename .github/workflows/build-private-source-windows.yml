@@ -28,14 +28,20 @@ jobs:
       matrix:
         variant: [debug, release]
     steps:
-      - name: Setup Java
+      - name: Setup Java 17 (for SDK tools)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Setup Java 11 (for Gradle build)
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '11'
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
 
       - name: Setup SSH key
         uses: webfactory/ssh-agent@v0.9.0
