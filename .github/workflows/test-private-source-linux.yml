@@ -1,0 +1,71 @@
+name: test-private-source-linux
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_repo_ssh_url:
+        description: SSH URL for private source repo
+        required: true
+        type: string
+      source_ref:
+        description: Source git ref or commit
+        required: true
+        type: string
+      artifact_name:
+        description: Artifact name for test reports
+        required: true
+        default: gnirehtet-test-linux
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '11'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SOURCE_REPO_SSH_KEY }}
+
+      - name: Add GitHub host key
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+
+      - name: Clone private source
+        run: |
+          git clone "${{ inputs.source_repo_ssh_url }}" source
+          cd source
+          git checkout "${{ inputs.source_ref }}"
+
+      - name: Run full checks (unit + relay e2e)
+        run: |
+          cd source
+          chmod +x tool/ci/run-ci-checks.sh
+          ./tool/ci/run-ci-checks.sh
+
+      - name: Upload reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: |
+            source/app/build/reports
+            source/app/build/test-results
+            source/relay-java/build/reports
+            source/relay-java/build/test-results
+          retention-days: 1
+          if-no-files-found: warn

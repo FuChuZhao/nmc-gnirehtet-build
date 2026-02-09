@@ -1,0 +1,71 @@
+name: build-private-source-windows
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_repo_ssh_url:
+        description: SSH URL for private source repo
+        required: true
+        type: string
+      source_ref:
+        description: Source git ref or commit
+        required: true
+        type: string
+      artifact_prefix:
+        description: Artifact name prefix
+        required: true
+        default: gnirehtet-windows-apk
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [debug, release]
+    steps:
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '11'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Setup SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SOURCE_REPO_SSH_KEY }}
+
+      - name: Add GitHub host key
+        shell: pwsh
+        run: |
+          $sshDir = Join-Path $HOME '.ssh'
+          New-Item -Path $sshDir -ItemType Directory -Force | Out-Null
+          ssh-keyscan github.com | Out-File -FilePath (Join-Path $sshDir 'known_hosts') -Encoding ASCII -Append
+
+      - name: Clone private source
+        shell: pwsh
+        run: |
+          git clone "${{ inputs.source_repo_ssh_url }}" source
+          cd source
+          git checkout "${{ inputs.source_ref }}"
+
+      - name: Build APK
+        shell: pwsh
+        run: |
+          cd source
+          & .\tool\ci\build.ps1 -Variant "${{ matrix.variant }}" -OutDir "out/artifacts"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact_prefix }}-${{ matrix.variant }}
+          path: source/out/artifacts
+          retention-days: 1
+          if-no-files-found: error
