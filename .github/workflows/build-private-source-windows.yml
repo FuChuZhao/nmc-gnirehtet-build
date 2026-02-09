@@ -53,10 +53,8 @@ jobs:
         run: |
           $sshDir = Join-Path $HOME '.ssh'
           New-Item -Path $sshDir -ItemType Directory -Force | Out-Null
-          @"
-Host github.com
-  StrictHostKeyChecking accept-new
-"@ | Out-File -FilePath (Join-Path $sshDir 'config') -Encoding ASCII -Append
+          Add-Content -Path (Join-Path $sshDir 'config') -Value 'Host github.com'
+          Add-Content -Path (Join-Path $sshDir 'config') -Value '  StrictHostKeyChecking accept-new'
 
       - name: Clone private source
         shell: pwsh
