@@ -48,12 +48,15 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SOURCE_REPO_SSH_KEY }}
 
-      - name: Add GitHub host key
+      - name: Configure SSH host checking
         shell: pwsh
         run: |
           $sshDir = Join-Path $HOME '.ssh'
           New-Item -Path $sshDir -ItemType Directory -Force | Out-Null
-          ssh-keyscan github.com | Out-File -FilePath (Join-Path $sshDir 'known_hosts') -Encoding ASCII -Append
+          @"
+Host github.com
+  StrictHostKeyChecking accept-new
+"@ | Out-File -FilePath (Join-Path $sshDir 'config') -Encoding ASCII -Append
 
       - name: Clone private source
         shell: pwsh
